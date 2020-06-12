@@ -96,12 +96,6 @@ else{
 	$GC_LogPath = $LogPath
 }
 
-# Windows PowerShell 以外はサポートされていない
-if( $PSVersionTable.PSVersion.Major -ge 6 ){
-	Log "[FAIL] PowerShell Core is not supported."
-	exit
-}
-
 # ログファイル名
 $GC_LogName = "FindDuplicateDevice(Intune)"
 
@@ -369,9 +363,38 @@ function DeviceOperation( [array]$DuplicateDevices ){
 ###################################################
 Log "[INFO] ============== START =============="
 
-# Azure AD Login
+# 動作環境確認
+if( $PSVersionTable.PSVersion.Major -ne 5 ){
+	Log "[FAIL] このスクリプトは Windows PowerShell 5 のみサポートしています"
+	Log "[INFO] ============== END =============="
+	exit
+}
+
+# モジュールインストール確認
+$Result = Get-Module -Name Microsoft.Graph.Intune
+if( $Result -eq $null ){
+	# 管理権限で起動されているか確認
+	if (-not(([Security.Principal.WindowsPrincipal] `
+		[Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+		[Security.Principal.WindowsBuiltInRole] "Administrator"`
+		))) {
+
+		Log "[INFO] 必要モジュールがインストールされていません"
+		Log "[INFO] 管理権限で起動してスクリプトを実行するか、管理権限で以下コマンドを実行してください"
+		Log "[INFO] Install-Module Microsoft.Graph.Intune"
+		Log "[INFO] ============== END =============="
+		exit
+	}
+
+	# 管理権限で実行されているのでモジュールをインストールする
+	Log "[INFO] 必要モジュールをインストールします"
+	Install-Module Microsoft.Graph.Intune
+}
+
+# Intune Login
+$Credential = Get-Credential -Message "Azure の ID / Password を入力してください"
 try{
-	Connect-MSGraph -ErrorAction Stop
+	Connect-MSGraph -Credential $Credential -ErrorAction Stop
 }
 catch{
 	Log "[FAIL] Intune login fail !"
@@ -404,7 +427,7 @@ Log "[INFO] Terget Devices count : $TergetDevicesDataCount"
 Log "[INFO] Data sort."
 [array]$SortDevicesData = DataSort $TergetDevicesData
 
-# 出力デバイス用処理時間
+# 出力ファイル用処理時間
 $Now = Get-Date
 
 # 全デバイスリスト出力
