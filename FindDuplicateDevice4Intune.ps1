@@ -65,10 +65,6 @@ CSV の出力先
 
 .PARAMETER WhatIf
 実際の削除はせず、動作確認だけします
-
-.LINK
-重複したデバイス排除するスクリプト(PowerShell)
-http://www.vwnet.jp/Windows/PowerShell/2018111601/FindDuplicateDevice.htm
 #>
 
 ###################################################
@@ -344,12 +340,15 @@ function DeviceOperation( [array]$DuplicateDevices ){
 				Log "[INFO] Device duplicate (Remove) : $DuplicateDeviceName / $DuplicateDeviceObjectId"
 
 				if( -not $WhatIf ){
-					try{
-						# 削除
-						Remove-IntuneManagedDevice -managedDeviceId $DuplicateDeviceObjectId -ErrorAction Stop
-					}
-					catch{
-						Log "[ERROR] Device remove error : $DuplicateDeviceName / $DuplicateDeviceObjectId"
+					# 「このデバイスでユーザーが削除されました」は削除しない
+					if( $DuplicateDeviceName -ne "User deleted for this device" ){
+						try{
+							# 削除
+							Remove-IntuneManagedDevice -managedDeviceId $DuplicateDeviceObjectId -ErrorAction Stop
+						}
+						catch{
+							Log "[ERROR] Device remove error : $DuplicateDeviceName / $DuplicateDeviceObjectId"
+						}
 					}
 				}
 			}
@@ -370,9 +369,11 @@ if( $PSVersionTable.PSVersion.Major -ne 5 ){
 	exit
 }
 
-# モジュールインストール確認
-$Result = Get-Module -Name Microsoft.Graph.Intune
-if( $Result -eq $null ){
+# モジュール ロード
+try{
+	Import-Module -Name Microsoft.Graph.Intune -ErrorAction Stop
+}
+catch{
 	# 管理権限で起動されているか確認
 	if (-not(([Security.Principal.WindowsPrincipal] `
 		[Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
@@ -392,15 +393,17 @@ if( $Result -eq $null ){
 }
 
 # Intune Login
-$Credential = Get-Credential -Message "Azure の ID / Password を入力してください"
+# $Credential = Get-Credential -Message "Azure の ID / Password を入力してください"
 try{
-	Connect-MSGraph -Credential $Credential -ErrorAction Stop
+	# Connect-MSGraph -Credential $Credential -ErrorAction Stop
+	Connect-MSGraph -ErrorAction Stop
 }
 catch{
 	Log "[FAIL] Intune login fail !"
 	Log "[INFO] ============== END =============="
 	exit
 }
+
 
 # CSV 出力先
 if( $CSVPath -eq [string]$null){
