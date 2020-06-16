@@ -29,6 +29,9 @@ CSV 出力ディレクトリ指定(-CSVPath)
 全デバイス リスト出力(-AllList)
     重複確認する全デバイス リストを CSV 出力します
 
+資格情報を使用する(-UseCredential)
+    Web 対話ログインではなく、資格情報を使用します
+
 
 ■ 例
 PS C:\Test> .\FindDuplicateDevice4AzureAD.ps1
@@ -47,3 +50,6 @@ PS C:\Test> .\FindDuplicateDevice4AzureAD.ps1 -CSVPath C:\CSV
 デバイス重複リストを C:\CSV に出力します
 
 PS C:\Test> .\FindDuplicateDevice4AzureAD.ps1 -LogPath C:\Log
+
+PS C:\Test> .\FindDuplicateDevice4AzureAD.ps1 -UseCredential
+資格情報を使用します
