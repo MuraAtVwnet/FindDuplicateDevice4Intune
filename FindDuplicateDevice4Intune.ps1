@@ -115,7 +115,7 @@ $GC_LogName = "FindDuplicateDevice(Intune)"
 # CSV レコード
 class CsvRecode {
 	[string] $DeviceName
-	[string] $LastSync
+	[datetime] $LastSync
 	[string] $ManagedDeviceId
 	[string] $AzureADDeviceId
 	[string] $Status
