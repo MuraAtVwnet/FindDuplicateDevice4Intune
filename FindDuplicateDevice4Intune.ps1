@@ -112,16 +112,6 @@ else{
 # ログファイル名
 $GC_LogName = "FindDuplicateDevice(Intune)"
 
-# CSV レコード
-class CsvRecode {
-	[string] $DeviceName
-	[datetime] $LastSync
-	[string] $ManagedDeviceId
-	[string] $AzureADDeviceId
-	[string] $Status
-	[string] $Operation
-}
-
 # 定数
 $GC_StatusOriginal = "Newest"
 $GC_StatusDuplicate = "Duplicate"
@@ -190,28 +180,6 @@ function Log(
 
 
 ###################################################
-# 必要データ取得
-###################################################
-filter GetDeviceData{
-
-	$DeviceData = New-Object CsvRecode
-
-	# デバイス名
-	$DeviceData.DeviceName = $_.deviceName
-
-	# 最終同期日時
-	$DeviceData.LastSync = $_.lastSyncDateTime
-
-	# マネージド デバイス ID
-	$DeviceData.ManagedDeviceId = $_.managedDeviceId
-
-	# AzureAD デバイス ID
-	$DeviceData.AzureADDeviceId = $_.azureADDeviceId
-
-	return $DeviceData
-}
-
-###################################################
 # 重複デバイス検出
 ###################################################
 filter KeyBreak{
@@ -231,8 +199,10 @@ filter KeyBreak{
 		$OldKeyDeviceName = $NewKeyDeviceName
 		$OldRec = $NewRec
 
-		$NewKeyDeviceName = $_.DeviceName
+		$NewKeyDeviceName = $_.deviceName
 		$NewRec = $_
+		Add-Member -InputObject $NewRec -MemberType NoteProperty -Name 'Status' -Value "" -Force
+		Add-Member -InputObject $NewRec -MemberType NoteProperty -Name 'Operation' -Value "" -Force
 
 		# デバイス名重複
 		if( $OldKeyDeviceName -eq $NewKeyDeviceName ){
@@ -289,12 +259,12 @@ function DataSort($TergetDevicesData){
 
 	# Sort Key
 	$DeviceNameKey = @{
-		Expression = "DeviceName"
+		Expression = "deviceName"
 		Descending = $false
 	}
 
 	$LastSyncKey = @{
-		Expression = "LastSync"
+		Expression = "lastSyncDateTime"
 		Descending = $true
 	}
 
@@ -316,7 +286,12 @@ function OutputAllData([array]$DuplicateDevices, $Now){
 		mdkdir $CSVPath
 	}
 
-	$DuplicateDevices | Export-Csv -Path $OutputDevice -Encoding Default
+	$DuplicateDevices | Select-Object	deviceName, `
+										lastSyncDateTime, `
+										managedDeviceId, `
+										azureADDeviceId, `
+										Status, `
+										Operation | Export-Csv -Path $OutputDevice -Encoding Default
 }
 
 
@@ -332,7 +307,12 @@ function OutputDuplicateData([array]$SortDevicesData, $Now){
 	if( -not(Test-Path $CSVPath)){
 		mdkdir $CSVPath
 	}
-	$DuplicateDevices | Export-Csv -Path $OutputDevice -Encoding Default
+	$DuplicateDevices | Select-Object	deviceName, `
+										lastSyncDateTime, `
+										managedDeviceId, `
+										azureADDeviceId, `
+										Status, `
+										Operation | Export-Csv -Path $OutputDevice -Encoding Default
 }
 
 
@@ -436,7 +416,7 @@ if( $CSVPath -eq [string]$null){
 }
 
 # 全デバイスを取得
-[array]$TergetDevicesData = Get-IntuneManagedDevice | GetDeviceData
+[array]$TergetDevicesData = Get-IntuneManagedDevice
 
 # 対象デバイス数
 $TergetDevicesDataCount = $TergetDevicesData.Count
